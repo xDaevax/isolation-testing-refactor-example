@@ -94,7 +94,7 @@ namespace TestingDependencyIsolation.Modified.Tests.Unit.Reporting {
             Assert.IsEmpty(resultPath, "No path should have been assigned.");
         } // end test
 
-        [Test, Category("Unit"), TestOf("PrepareReportData")]
+        [Test, Category("Unit"), TestOf("PrepareReportData"), Ignore("FileStream cannot be mocked.  Consider updating the IFileSystemProvider to use a different return type before test can be finished.")]
         public void ReportingEngine_PrepareReportData_WithValidInput_ShouldReturnReportData() {
             // ARRANGE
             ReportingEngine engine = null;
