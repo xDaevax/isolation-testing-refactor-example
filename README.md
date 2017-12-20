@@ -33,7 +33,7 @@ Indicate either 0 or 1 to determine the sort order.
 
 Note the program output and press a key to close the program.
 
-Next, have a look at the `TestingDependencyIsolation.Original\ReportFile.txt`.
+Next, have a look at the `Inputs\ReportFile.txt`.  This file is copied to the output directory on the post-build steps of each of the executable projects.
 
 This is the sample file (which you can modify) that is used by both the *Original* and *Modified* versions of the program.
 

@@ -1,0 +1,7 @@
+[2017-12-13 09:02:23.244 INFO - Data Updated] Value Velocity changed from 2 mp/h to 10 mp/h
+[2017-12-13 09:02:44.548 INFO - Data Updated] Value Weight changed from 120 lbs to 118 lbs
+[2017-12-13 09:12:06.713 INFO - Data Updated] Value Velocity changed from 10 mp/h to 13 mp/h
+[2017-12-13 09:12:06.714 WARN - Data Error] Value Velocity of -2 mp/h not valid
+[2017-12-13 09:15:24.310 INFO - Data Updated] Value Velocity changed from NaN to 16 mp/h
+[2017-12-13 09:18:51.295 INFO - Data Insert] Value Temperature of 60 degrees Farenheit was inserted
+[2017-12-14 10:30:33.472 ERROR - Data Read] Value Humidity not defined
