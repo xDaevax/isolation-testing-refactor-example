@@ -5,7 +5,8 @@ using System.Linq;
 
 namespace TestingDependencyIsolation.Modified.IO {
     /// <summary>
-    /// Type that provides very simple read access to the file system.
+    /// Type that provides very simple read access to the file system. Intended to be the primary way in which files and their contents are loaded
+    /// from the file-system.
     /// </summary>
     public class SimpleFileSystemProvider : IFileSystemProvider {
         #region --Constructors--
@@ -21,7 +22,7 @@ namespace TestingDependencyIsolation.Modified.IO {
         #region --Functions--
 
         /// <summary>
-        /// Attempts to build a fully qualified path to a file based on the given <paramref name="parts"/>.
+        /// Attempts to build a fully qualified path to a file based on the given <paramref name="parts"/>. Uses <see cref="Path.Combine(string[])"/>.
         /// </summary>
         /// <param name="parts">The parts of a path to build.</param>
         /// <returns>A fully qualified file-system path</returns>
@@ -30,7 +31,7 @@ namespace TestingDependencyIsolation.Modified.IO {
         } // end function BuildPath
 
         /// <summary>
-        /// Determins whether or not the given path exists.
+        /// Determins whether or not the given path exists.  Doesn't bother if no <paramref name="path"/> is given.
         /// </summary>
         /// <param name="itemType">The <see cref="FileSystemType"/> that specifies whether the given path is a directory or a file.</param>
         /// <param name="path">The path to check</param>
@@ -55,6 +56,7 @@ namespace TestingDependencyIsolation.Modified.IO {
 
         /// <summary>
         /// Returns an enumerable list of <see cref="FileInfo"/> that exist in the given <paramref name="path"/> and have contents matching the specified <paramref name="criteria"/>.
+        /// Assumes that the <paramref name="path"/> is an absolute path to a directory, not a file.  Use the <see cref="Exists(FileSystemType, string)"/> method first to safely ensure the directory exists before searching it for files.
         /// </summary>
         /// <param name="path">The directory path containing the files to find</param>
         /// <param name="criteria">The file type / name fitlers used to limit results.</param>
@@ -65,7 +67,9 @@ namespace TestingDependencyIsolation.Modified.IO {
         } // end function FindFiles
 
         /// <summary>
-        /// Returns a <see cref="DirectoryInfo"/> instance for the given <paramref name="path"/>.
+        /// Returns a <see cref="DirectoryInfo"/> instance for the given <paramref name="path"/>.  Assumes that what is given is a directory.
+        /// If a file is passed, this method returns null even if the file exists.  Use the <see cref="FindFiles(string, string)"/> method if
+        /// attempting to load file information.
         /// </summary>
         /// <param name="path">The fully qualified directory path</param>
         /// <returns>A new <see cref="DirectoryInfo"/> instance if the path was found; null if the path was not found</returns>
@@ -80,7 +84,8 @@ namespace TestingDependencyIsolation.Modified.IO {
 
         /// <summary>
         /// Opens the file at the given <paramref name="fileName"/> and returns the read-only stream.
-        /// It is important when using this method to ENSURE that the stream is disposed of properly when complete.
+        /// It is important when using this method to ENSURE that the stream is disposed of properly when complete so always make sure to
+        /// close the stream or wrap the return value from this method in a <code>using (var s = instance.OpenRead(string)) { }</code> block.
         /// </summary>
         /// <param name="fileName">The name of the file to open.</param>
         /// <returns>A <see cref="FileStream"/> instance that allows the contents of the given file to be read.</returns>

@@ -37,6 +37,8 @@ Next, have a look at the `Inputs\ReportFile.txt`.  This file is copied to the ou
 
 This is the sample file (which you can modify) that is used by both the *Original* and *Modified* versions of the program.
 
+#### Program Logic
+
 After you've reviewed the file, consider the following program flow for the Original example:
 
 1) Program Start
@@ -68,7 +70,9 @@ The above logic is primarily contained in the `ReportViewer.cs` file.
 
 After you're comfortable with the logic, open the `TestingDependencyIsolation.Original.Tests\Unit\Core\DataItemFixture.cs` file and make note of the comments.
 
-Run the unit test
+#### Testing - First Pass
+
+> Run the unit test
 
 After reviewing the comments and running the unit test open the `ReportViewerFixture.cs` file.
 
@@ -96,4 +100,111 @@ Review the `ReportViewer.cs` file's comment section after the class.
 
 Once you've reviewed that information, it's time to answer the question:  How can we fix it?
 
-> TODO: Finish ReadMe
+#### Fixing it - Overview
+
+Now that *most* of the code smells have been defined, we need to bring any relevant design patterns and / or sound OO concepts to bear in order to re-structure the code.  When doing this, we are attempting to balance the following aspects of the code:
+
+ - Readability
+ - Maintainability
+ - Complexity
+ - Testability
+ - Performance
+
+These are not in any particular order.  Some projects will put a higher priority on maintainability if many changes are expected, others will emphasize performance.  Often, certain sub-sections of code will have different priorities within the same project, so it's important to make sure we're grounded in the bigger picture as testing is not a end itself, but a means to more well-rounded code.  Testing begins to become too costly and too cumbersome if the goal of the testing is the completion of tests, rather than the verification of the actual software.
+
+In this case, we'll begin by identifying the responsibilities of program to see if we can extract meaningful, but well defined boundaries that match the various tasks being performed by the code.
+
+Perhaps the most obvious, is the actual printing of the report.
+
+##### Refactoring
+
+Printing, or the output of the program is the PRIMARY *business* goal of the software, so this is a logical place to start but we need to build a context for refactoring.  First, we need to ask a series of questions in order to help guide our refactoring process.  The questions below are grouped by a design-pattern or principle that the questions are designed to help identify and answer.
+
+
+1) YAGNI (You ain't gonna' need it)
+   a) Is there a clear business-case for changing the report output?
+   b) How likely is it that different forms of output (other than to the console) will be requested?
+2) SRP (Single Responsibility Principle)
+   a) Can the output only be generated from a flat-file, or can it come from other sources?
+   b) Is the format for the output always the same?
+   c) Is the format for the input always the same?
+3) IoC (Inverson of Control)
+   a) Is it possible to "refresh" the report?
+   b) Could additional transformations be applied before printing the output?
+
+Together, these questions (and their respective answers) help to frame our refactoring effort.  Some of them could be elevated to business owners and help to define scope and requirements, while others are decisions to be made by the developer.
+
+Let us assume the following answers to the questions:
+
+> 1.i -- Is there a clear business-case for changing the report output?
+
+In the future, we'd like to be able to support additional output options such as PDF, HTML, and possibly Excel but we haven't gone into much detail about when.  For now we just want something simple.
+
+> 1.ii -- How likely is it that different forms of output (other than to the console) will be requested?
+
+Based on the business answer to the first question, we can reasonably assume that the need for different outputs will be on the way.  At the same time, we don't know what those are or when (if) they will actually happen.  As a result, we won't spend a great deal of time writing those now, but we'll set ourselves up so that they will be easy to introduce later.
+
+> 2.i -- Can the output only be generated from a flat-file, or can it come from other sources?
+
+Eventually we need to pull in data from our `Data Warehouse` but our analysts are still massaging the information.
+
+> 2.ii -- Is the format for the output always the same?
+
+Probably not, but we don't have enough information about *how* it could possibly change, and it could add considerable complexity to add in formatting customization, so we'll leave this out for now.
+
+> 2.iii -- Is the format for the input always the same?
+
+Based on 2.i, no but this can be easily abstracted away, so we'll set it up now in preparation.
+
+> 3.i -- Is it possible to "refresh" the report?
+
+Yes, new data comes in all the time. <-- This answer from the business tells us that our constructor as it exists doesn't make sense because we have to create new instances of the entire `ReportViewer` EVERY time if they want to refresh the data.  Best to separate this behavior so it can be called as needed.
+
+> 3.ii -- Could additional transformations be applied before printing the output?
+
+Possibly, but at the very least we can assume that it will NOT always follow that immediate printing should follow loading the data. We can set that up as one path, while allowing for intervention along another path.
+
+
+With answers to these questions, and new context we can now identify the following areas of responsibility.
+
+Responsibility|Layer|Notes
+:--|:--:|:--:|
+|Data Loading|Data|Loads serial report data, could be various sources|
+|Customization|System|Controls application flow, probably a config file, but not necessarily|
+|Data Processing|Business|Transforming Input data into a standardized structure, means that report inputs will always be the same, but how it arrives in that form can change|
+|File Reading|System|Can interact with the files in the file-system, for our standard flat-file input, but could come from Data Warehouse|
+|Report Output|Business|Reads from standard input to display to console, console is one of many potential outputs|
+
+
+For the purpose of this code, we'll assign special "suffixes" to the types we create that contain logic to give hints as to what they do.  This helps to improve readability when used in a consistent manner.  This is significant since we can already see we'll be creating many more types than the original version had.
+
+The suffixes are as follows:
+
+- Data --> *Processor
+- System --> *Provider (spin-off of MS conventions.  Think: MembershipProvider, LogProvider, IdentityProvider, SqlProvider <-- All support non-business logic related concerns)
+- Business --> *Viewer, *Engine
+
+This way of using suffixes for type names is helpful when designing a tiered application (think MVC --> *Controller, *Model, *Repository, *ViewModel, *Service, etc.)
+
+
+At the core, one of the largest deficiencies of the original code was it was too tightly coupled.  To address that, we'll define interfaces in places where functionality could change in the future (based on the answers to our questions).
+
+The following interfaces are created:
+
+- IConfigurationProvider <-- Because configuration could come from an app.config, web.config, or even SQL.
+  - Our library will not define a concrete implementation for this interface because we're in context of a class library and we don't know where this class library will be used.
+- IDataProcessor <-- Because for now we are processing data from a flat file with a known structure, but unsure how this will happen moving forward
+- IFileSystemProvider <-- Because we want to abstract away file-system calls to improve testability
+- IReportViewer <-- Because we may have different outputs in the future (HTML, PDF, etc.) but for now we want Console.
+
+The foundation of our application is based on these interfaces.  Have a look at these interfaces now.
+
+Also note how the `DataItem` and `ItemSeverity` types were moved over without modification.  These don't need to be refactored.
+
+Let's look more specifically at the implementation for the `IFileSystemProvider` interface first, the `SimpleFileSystemProvider` type.
+Because this type "crosses the boundary" between our code and an external dependency, we know that we will not *really* be able to write unit-tests for it.  The goal is to move this "boundary-crossing" code or "external dependency" to a single place within our code-base, which should enable any code the needs to cross this boundary to be more easily unit-tested.  This promotes loose-coupling and can help to minimize bugs as the file-system is always accessed consistently, with non-business related concerns addressed, such as is the file there, do we have permission to read the file, how do we read the contents of the file, etc.)
+
+Note that the XML comments for this type and its methods provide insight into HOW it was intended to be used, not as much WHAT the methods do.  The names of the methods should be enough to figure out what they do in *MOST* cases.  This type of documentation is critical when breaking out application components into more abstract layers that may not initially be seen.
+
+By nature, loosely coupled code can be more difficult to read.  The solution is not to put it all in one file or reduce the overall number of files.  In the past, programs were written in files that could and often did exceed 10s of thousands of lines.  There is a balance to be struck for readability between single-file and 1 file per method.  Providing adequate documentation, consistent naming conventions, and intuitive type / method names means that the code will be more well understood and used more effectively by those other than the author.
+
