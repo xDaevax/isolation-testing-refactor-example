@@ -4,6 +4,9 @@ using System.Linq;
 using TestingDependencyIsolation.Modified.Core;
 
 namespace TestingDependencyIsolation.Modified.Reporting {
+    /// <summary>
+    /// Implementation of the <see cref="IReportViewer"/> interface that can print reports to a <see cref="TextWriter"/> output (often a Console.Output).
+    /// </summary>
     public class ConsoleReportViewer : IReportViewer {
         #region --Fields--
 
@@ -25,6 +28,11 @@ namespace TestingDependencyIsolation.Modified.Reporting {
 
         #region --Methods--
 
+        /// <summary>
+        /// Prints a report to the output given in this instances constructor.  The report will print the information in the given <paramref name="contents"/>, ordering it based on the <paramref name="settings"/> specified.
+        /// </summary>
+        /// <param name="settings">The <see cref="ReportSettings"/> instance that contains sorting information.</param>
+        /// <param name="contents">The <see cref="IEnumerable{DataItem}"/> with items to be printed to the report output.</param>
         public void PrintReport(ReportSettings settings, IEnumerable<DataItem> contents) {
             this._output.WriteLine("Writing report based on file: {0}.", settings.FileName);
             this._output.WriteLine("-------------------------------------------------");
@@ -56,6 +64,12 @@ namespace TestingDependencyIsolation.Modified.Reporting {
 
         #region --Functions--
 
+        /// <summary>
+        /// Sorts the given <paramref name="contents"/> in order by timestamp in the order specified by the <paramref name="settings"/>.
+        /// </summary>
+        /// <param name="settings">The <see cref="ReportSettings"/> instance that contains sorting information.</param>
+        /// <param name="contents">The <see cref="IEnumerable{DataItem}"/> with items to be sorted.</param>
+        /// <returns>An new <see cref="IEnumerable{DataItem}"/> with its contents ordered according to the sorting specified in the <paramref name="settings"/>.</returns>
         public IEnumerable<DataItem> SortContents(ReportSettings settings, IEnumerable<DataItem> contents) {
             List<DataItem> returnValue = new List<DataItem>();
             if (settings.SortAscending) {

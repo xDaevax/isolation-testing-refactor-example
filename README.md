@@ -9,33 +9,36 @@ This solution contains code samples for demonstrating unit testing concepts and 
 
 There are two real examples in this solution:
 
- - Original
- - Modified
+ - **Original**
+ - **Modified**
 
 Both examples have three associated projects:
 
- - TestingDependencyIsolation.*
- - TestingDependencyIsolation.*.Tests
- - TestingDependencyIsolation.*.Driver
+ - **TestingDependencyIsolation.***
+ - **TestingDependencyIsolation.*.Tests**
+ - **TestingDependencyIsolation.*.Driver**
 
 ## Usage
 
 The `*.Tests` file contain any unit or integration tests for the corresponding class library project while the `*.Driver` files contain the "real-world" runnable applications in which the class library code is used.
 
-The `ReportViewer.cs` file in the Original class library contains notes at the bottom that indicate the problems involved with writing tests for the code and general code smells.  The Modified series of projects has a re-factored version of the Original projects along with corresponding unit tests.
+The [`ReportViewer.cs`][source_1] file in the Original class library contains notes at the bottom that indicate the problems involved with writing tests for the code and general code smells.  The Modified series of projects has a re-factored version of the Original projects along with corresponding unit tests.
 
 ### Walkthrough
 
 Start by opening the `Executables\TestingDependencyIsolation.Original.Driver` project and running the program.
 
-Indicate either 0 or 1 to determine the sort order.
+Indicate either `0` or `1` to determine the sort order.
 > Which you choose is arbitrary, but you must pick on or the other to continue
 
+![Original Program Output][original_output]
 Note the program output and press a key to close the program.
 
-Next, have a look at the `Inputs\ReportFile.txt`.  This file is copied to the output directory on the post-build steps of each of the executable projects.
+Next, have a look at the [`Inputs\ReportFile.txt`][source_2].
 
 This is the sample file (which you can modify) that is used by both the *Original* and *Modified* versions of the program.
+
+> To view how this is done, open the project properties of either executable and go to the **Build Events** tab.  The command listed under the *post build events* input is: `xcopy $(ProjectDir)..\..\..\Inputs\ReportFile.txt $(TargetDir) /y`
 
 #### Program Logic
 
@@ -66,59 +69,59 @@ After you've reviewed the file, consider the following program flow for the Orig
    3) Prompt for valid user input indicating sort order
    4) Print the results to the Console
 
-The above logic is primarily contained in the `ReportViewer.cs` file.
+The above logic is primarily contained in the [`ReportViewer.cs`][source_1] file.
 
-After you're comfortable with the logic, open the `TestingDependencyIsolation.Original.Tests\Unit\Core\DataItemFixture.cs` file and make note of the comments.
+After you're comfortable with the logic, open the [`TestingDependencyIsolation.Original.Tests\Unit\Core\DataItemFixture.cs`][source_3] file and make note of the comments.
 
 #### Testing - First Pass
 
 > Run the unit test
 
-After reviewing the comments and running the unit test open the `ReportViewerFixture.cs` file.
+After reviewing the comments and running the unit test open the [`ReportViewerFixture.cs`][source_4] file.
 
-Notice the `[Ignore()]` attribution on the First test.  This attribute is used to tell NUnit to not run the test.  This allows tests that are in development or are temporarily broken to be excluded from the results.  This is particularly useful when used in conjunction with a build server, where tests are run on every commit and failed tests result in failed builds.
+Notice the `[Ignore()]` attribution on the first test.  This attribute is used to tell NUnit to not run the test.  This allows tests that are in development or are temporarily broken to be excluded from the results.  This is particularly useful when used in conjunction with a build server, where tests are run on every commit and failed tests result in failed builds.
 
 In this case, the code smells first start in defining what is being tested.  Unit tests should have a clearly definable, succinct SUT.  In this case, the constructor initializes a call chain that is so complex, the actual naming of the test becomes a challenge.
 
-In addition to naming, we don't even get past step 1.  A good unit test should be isolated.  This means that the test (like the code it's testing) should only ever have **ONE** reason to fail: The code is broken.
-In the case of the constructor, a constructors only responsibility should be to initialize default values or the bare-minimum amount of information required to create an instance of a class.  In the case of the `ReportViewer` type, it actually initiates part of the processing logic.
+In addition to naming, we don't even get past step 1.  A good unit test should be isolated.  This means that the test (like the code it's testing) should only ever have **ONE** reason to fail: The code is broken or was changed.
+The primary (and perhaps only) concern of any constructor should be to initialize default values such that the bare-minimum amount of information required to create an instance of a class is performed.  In contradiction to this idea in the case of the `ReportViewer` type, it initiates part of the processing logic and therefore makes an assumption about what the type *should* do, instead of what it *could* do.
 
-This is poor OO design at a minimum, as the class has lost any versatility.  This is a `procedural` style of programming that is common in procedural languages and was prevalent in the early days of classic ASP, VB, and VBA / VBScript.
-This design requires a significant refactor both from a code quality standpoint, and a test-ability standpoint.  Go ahead and attempt to run this test by removing the `[Ignore()]` attribute.
+This is poor OO design; the class has lost any versatility and makes too many assumptions about its own use.  In some cases, this type of behavior is *intended* by the developer, especially in the case of some very specific, opinionated frameworks.  As a rule, however, this should be avoided in OO design.  This is a `procedural` style of programming that is common in procedural languages and was prevalent in the early days of classic ASP, VB, and VBA / VBScript.
+This program requires a significant refactor both from a code quality standpoint, and a test-ability standpoint.  Go ahead and attempt to run this test by removing the `[Ignore()]` attribute.
 
-The test fails when attempting to load the configuration file from configuration because... We're in a test, we don't have the app.config file that the driver has.
+The test fails when attempting to load the configuration file from configuration because... We're in a test, we don't have the `app.config` file that the executable has.  This should also spark a chain reaction of thoughts in your mind: "Oh, if that isn't available, that means that the report file input may also not be available...", "What if this library were being used in a web-application or other way where Console operations were not the best way to perform input / output?", "What if configuration doesn't come from a config file at all?"
 
 This is an example of tight-coupling.  Now, you could write an integration test for this situation, and add the app setting to the app.config of the test file but that is a different type of testing all together.
 
 Unit tests should be devoid of this kind of environment configuration because a unit test should test logic in isolation.  The test now breaks for a reason that is completely unrelated to what we want to test.
 
-Even if we decided to add the app.config to the test, certainly the case where the config isn't present is a case we want to test as well.  Now, we need to setup the configuration as part of the test setup, and make sure to clear it afterwords so others tests don't break.
+Even if we decided to add the app.config to the test, certainly the case where the config isn't present is a case we want to test as well.  Now, we need to setup the configuration as part of the test setup, and make sure to clear it afterwards so other tests don't break.
 
-If that weren't bad enough, we would quickly run into issue after issue with the code as it is.
+If that weren't bad enough, we would quickly run into issue after issue with the code as it is (illustrated by the "chain-reaction" questions above).
 
-Review the `ReportViewer.cs` file's comment section after the class.
+Review the [`ReportViewer.cs`][source_1] file's comment section after the class.
 
-Once you've reviewed that information, it's time to answer the question:  How can we fix it?
+Once you've reviewed that information, it's time to answer the question:  **How can we fix it?**
 
 #### Fixing it - Overview
 
-Now that *most* of the code smells have been defined, we need to bring any relevant design patterns and / or sound OO concepts to bear in order to re-structure the code.  When doing this, we are attempting to balance the following aspects of the code:
+Now that *most* of the code smells have been defined, we need to bring any relevant design patterns and / or sound OO concepts to bear for the necessary re-structure of the code.  When doing this, we are attempting to balance the following aspects of the code:
 
- - Readability
- - Maintainability
- - Complexity
- - Testability
- - Performance
+ - **Readability**
+ - **Maintainability**
+ - **Complexity**
+ - **Testability**
+ - **Performance**
 
-These are not in any particular order.  Some projects will put a higher priority on maintainability if many changes are expected, others will emphasize performance.  Often, certain sub-sections of code will have different priorities within the same project, so it's important to make sure we're grounded in the bigger picture as testing is not a end itself, but a means to more well-rounded code.  Testing begins to become too costly and too cumbersome if the goal of the testing is the completion of tests, rather than the verification of the actual software.
+These are not listed in order; some projects will put a higher priority on maintainability if many changes are expected, others will emphasize performance.  Often, certain sub-sections of code will have different priorities within the same project, so it's important to make sure we're grounded in the bigger picture as testing is not an end itself, but a means to more well-rounded code.  Testing begins to become too costly and too cumbersome if the goal of the testing is the completion of tests, rather than the verification of the actual software.
 
-In this case, we'll begin by identifying the responsibilities of program to see if we can extract meaningful, but well defined boundaries that match the various tasks being performed by the code.
+In this case, we'll begin by identifying the responsibilities of program to see if we can extract meaningful, but well-defined boundaries that match the various tasks being performed by the code.
 
 Perhaps the most obvious, is the actual printing of the report.
 
 ##### Refactoring
 
-Printing, or the output of the program is the PRIMARY *business* goal of the software, so this is a logical place to start but we need to build a context for refactoring.  First, we need to ask a series of questions in order to help guide our refactoring process.  The questions below are grouped by a design-pattern or principle that the questions are designed to help identify and answer.
+We need to build a context for refactoring, because the printing or the output of the program is the PRIMARY *business* goal of the software, this is a logical place to start.  First, we need to ask a series of questions in order to help guide our refactoring process.  The questions below are grouped by a design-pattern or principle that the questions are designed to help identify and answer.
 
 
 1) YAGNI (You ain't gonna' need it)
@@ -191,20 +194,40 @@ At the core, one of the largest deficiencies of the original code was it was too
 
 The following interfaces are created:
 
-- IConfigurationProvider <-- Because configuration could come from an app.config, web.config, or even SQL.
+- [`IConfigurationProvider`][1] <-- Because configuration could come from an app.config, web.config, or even SQL.
   - Our library will not define a concrete implementation for this interface because we're in context of a class library and we don't know where this class library will be used.
-- IDataProcessor <-- Because for now we are processing data from a flat file with a known structure, but unsure how this will happen moving forward
-- IFileSystemProvider <-- Because we want to abstract away file-system calls to improve testability
-- IReportViewer <-- Because we may have different outputs in the future (HTML, PDF, etc.) but for now we want Console.
+- `IDataProcessor` <-- Because for now we are processing data from a flat file with a known structure, but unsure how this will happen moving forward
+- `IFileSystemProvider` <-- Because we want to abstract away file-system calls to improve testability
+- `IReportViewer` <-- Because we may have different outputs in the future (HTML, PDF, etc.) but for now we want Console.
 
 The foundation of our application is based on these interfaces.  Have a look at these interfaces now.
 
 Also note how the `DataItem` and `ItemSeverity` types were moved over without modification.  These don't need to be refactored.
 
 Let's look more specifically at the implementation for the `IFileSystemProvider` interface first, the `SimpleFileSystemProvider` type.
-Because this type "crosses the boundary" between our code and an external dependency, we know that we will not *really* be able to write unit-tests for it.  The goal is to move this "boundary-crossing" code or "external dependency" to a single place within our code-base, which should enable any code the needs to cross this boundary to be more easily unit-tested.  This promotes loose-coupling and can help to minimize bugs as the file-system is always accessed consistently, with non-business related concerns addressed, such as is the file there, do we have permission to read the file, how do we read the contents of the file, etc.)
+Because this type "crosses the boundary" between our code and an external dependency, we know that we will not *really* be able to write unit-tests for it.  The goal is to move this "boundary-crossing" code or "external dependency" to a single place within our code-base, which should enable any code the needs to cross this boundary to be more easily unit-tested.  This promotes loose-coupling and can help to minimize bugs as the file-system is always accessed consistently, with non-business related concerns addressed, such as is the file there, do we have permission to read the file, how do we read the contents of the file, etc.).  This has the added benefit of making the portion of the code we are most interested in testing, the business logic, is free from the "problematic" code that has been isolated so more of the important behaviors can be verified.
 
 Note that the XML comments for this type and its methods provide insight into HOW it was intended to be used, not as much WHAT the methods do.  The names of the methods should be enough to figure out what they do in *MOST* cases.  This type of documentation is critical when breaking out application components into more abstract layers that may not initially be seen.
 
 By nature, loosely coupled code can be more difficult to read.  The solution is not to put it all in one file or reduce the overall number of files.  In the past, programs were written in files that could and often did exceed 10s of thousands of lines.  There is a balance to be struck for readability between single-file and 1 file per method.  Providing adequate documentation, consistent naming conventions, and intuitive type / method names means that the code will be more well understood and used more effectively by those other than the author.
 
+The `SimpleFileSystemProvider` type is named aptly because it isn't designed for complex file-system interactions such as thread synchronization with multiple threads accessing a single file system resource, or buffering large contents.  For those behaviors a more advanced provider could be implemented and provided when necessary.
+
+Firstly, we'll look at the constructor.  Because this constructor has no dependencies, it can be deduced that creating tests for methods should require less up-front setup because there are no code dependencies.  There is however a single data dependency (on the file-system) so most of our testing will be integration testing and most of that will require some setup that deals with the file-system.
+
+Now looking at the `BuildPath` method, we see that this implementation is little more than a thin wrapper that simply calls the system method: `Path.Combine(params string)`.  In many cases, this might be considered a "waste" or at the very least, overkill.  Even something this small can dramatically improve the testability of the code that uses this provider.  Alternatively, calling code would need to provide a method for easily creating correct file-system paths.  Use of the `Path.Combine` method elsewhere has several implications:
+
+ - `Path.Combine` is a static method.  While this isn't a *bad* thing, it means that we have **NO** way to alter the behavior, which is problematic when writing unit tests for types that deal with the file-system.
+ - `Path.Combine` *should* be isolated away from our business logic because it solves a programming problem, not a business problem.
+ - Most of the times where `Path.Combine` would be needed would be in building file-system paths for reading, verification, or writing, all of which happen in this provider so its inclusion is logical.
+
+Next we'll consider the `Exists(FileSystemType, string)` method.  This function has more logic in it than the `BuildPath` method but it's ultimate goal is to wrap either the `Directory.Exists` method, or the `File.Exists` method.  These methods are again isolated and put in this provider so that code that needs to verif whether a file exists or not before performing an operation can be tested independent of whether the file-system exists.  When testing the `ReportingEngine` type, the `IFileSystemProvider` injected into the constructor can be mocked or stubbed to provide a specific value for the purposes of exercising a code-path on the `ReportingEngine` class.  Without the `IFileSystemProvider` interface wrapping the `Exists` method, the `ReportingEngine` couldn't be unit tested as the file would have to ACTUALLY exist.  Depdency on the interface means that we don't actually have to have the file and can "pretend" that the `IFileSystemProvider.Exists(FileSystemType, string)` method just returns `true` or just returns `false`.
+
+
+[source_1]: Source/Examples/Original/ExternalDependencies/Core/ReportViewer.cs
+[source_2]: Inputs/ReportFile.txt
+[source_3]: Source/Tests/Original/Unit/Core/DataItemFixture.cs
+[source_4]: Source/Tests/Original/Unit/Core/ReportViewerFixture.cs
+[source_9]: Source/Examples/Modified/Configuration/IConfigurationProvider.cs
+
+[original_output]: images/original_output_descending.jpg

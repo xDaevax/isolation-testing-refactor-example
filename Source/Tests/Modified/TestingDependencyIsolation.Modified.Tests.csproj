@@ -56,6 +56,7 @@
     <Compile Include="Unit\Core\DataItemFixture.cs" />
     <Compile Include="Unit\Core\DataLoadExceptionFixture.cs" />
     <Compile Include="Unit\Data\TextFileProcessorFixture.cs" />
+    <Compile Include="Unit\Reporting\ConsoleReportViewerFixture.cs" />
     <Compile Include="Unit\Reporting\ReportingEngineFixture.cs" />
     <Compile Include="Unit\Reporting\ReportSettingsFixture.cs" />
   </ItemGroup>

@@ -8,7 +8,7 @@ namespace TestingDependencyIsolation.Original.Tests.Unit.Core {
     /// By grouping tests with similar setup, the code and complexity required to test those methods can be greatly reduced.
     /// Typically, a fixture is named according to the type it is testing suffixed with the word: "Fixture".
     /// </summary>
-    [TestFixture, Category("Unit"), Description("TestFixture that contains methods used to test the functionality of the DataItem type.")]
+    [TestFixture, Category("Unit"), TestOf(typeof(DataItem)), Description("TestFixture that contains methods used to test the functionality of the DataItem type.")]
     public class DataItemFixture {
         #region --Tests--
 
@@ -25,7 +25,7 @@ namespace TestingDependencyIsolation.Original.Tests.Unit.Core {
         /// not be changed.  This is the only test in this fixture because checking the setters of the properties is not an effective use
         /// of testing time.
         /// </remarks>
-        [Test, Category("Unit")]
+        [Test, Category("Unit"), TestOf("DataItem")]
         public void DataItem_Constructor_WithNoParameters_ShouldInitializePropertyDefaults() {
             // ARRANGE
             DataItem item = null; // Perform any dependency or parameter setup.  In this case, farily minimal
